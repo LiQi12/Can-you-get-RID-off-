@@ -5,7 +5,7 @@
 
 
 
-Think you can **get off the risk** in traffic—smooth brake, no drama? The problem is, many classic safety numbers mostly track **“how close”** or **“how soon,”** so two driving situations can look equally risky on paper while one is a calm, controlled slowdown and the other is a last-second, white-knuckle evasive move. That mismatch is the **identity paradox** in plain terms: the metric stays chill while the driving task turns nasty. 
+Think you can **get off the risk** in traffic—smooth brake, no drama? The problem is, many classic safety metrics mostly track **“how close”** or **“how soon,”** so two driving situations can look equally risky on paper while one is a calm, controlled slowdown and the other is a last-second, white-knuckle evasive move. That mismatch is the **identity paradox** in plain terms: the metric stays chill while the driving task turns nasty. 
 
 **RID (Relative Interaction Domain)** is our attempt to make risk feel more like real driving: not just proximity, but whether the encounter is still **avoidable** given the **space you need** and the **time you have left** to react. So here’s the question—can you get **RID** off trouble on the road, before trouble gets you? 
 
