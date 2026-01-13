@@ -1,5 +1,5 @@
 ![Project cover](/pre_cover.jpg)
-
+![Project cover](/COVER.png)
 ## The paper related to this model is currently under review; once it is accepted, we will update the code and the cover accordingly.
 
 
