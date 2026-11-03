@@ -1,118 +1,216 @@
-![Project cover](/pre_cover.jpg)
-![Project cover](/COVER.png)
+![Project cover](pre_cover.jpg)
+![Project overview](COVER.png)
 
+# Can You Get RID of Risk?
 
+Think you can **get RID of risk** in traffic? A gentle tap on the brake, a little extra room, and you are out of trouble. Smooth braking, no drama. Then traffic changes the script.
 
-Think you can **get off the risk** in traffic—smooth brake, no drama? The problem is, many classic safety metrics mostly track **“how close”** or **“how soon,”** so two driving situations can look equally risky on paper while one is a calm, controlled slowdown and the other is a last-second, white-knuckle evasive move. That mismatch is the **identity paradox** in plain terms: **the metric stays chill while the driving task turns nasty**. 
+Many classic safety metrics keep an eye on **“how close”** or **“how soon.”** Yet two encounters can earn the same score while demanding very different responses: one is a calm, controlled slowdown; the other is a last-second, white-knuckle scramble for space. That is the **identity paradox** in everyday terms: **the metric stays chill while the driving task turns nasty.** Same score. Very different story behind the wheel.
 
-**RID (Relative Interaction Domain)** is our attempt to make risk feel more like real driving: not just proximity, but whether the encounter is still **avoidable** given the **space you need** and the **time you have left** to react. So here’s the question—can you get **RID** off trouble on the road, before trouble gets you? 
+**RID (Relative Interaction Domain)** brings the driving task into the picture: the **space an evasive manoeuvre needs** and the **time the encounter leaves**. By combining vehicle geometry, relative motion, and braking-based spatial demand, it gives those deceptively similar encounters a more revealing description.
 
-## What this repo does
-This repository contains a practical implementation of the **RID** framework from our paper *“Relative Interaction Domain (RID): A Real-Time Two-Dimensional Risk Quantification Model Considering Anticipated Spatial Demand.”* It turns vehicle trajectory data into interpretable, real-time-friendly risk signals by building a geometry-aware **“avoidance space”** between interacting road users and tracking how that space and urgency evolve over time. 
+So, can you **get RID of trouble before trouble gets you?** That is the question behind this project.
 
-Concretely, the code helps you:
-- Compute **ACG (Anticipated Critical Gap)**: the minimum closing-direction separation needed to keep braking-based avoidance feasible under the current state assumptions.
-- Construct the **RID Avoidance Area**: a 2D interaction domain that adapts to encounter geometry and vehicle footprint/buffer, so **lateral offsets** and **approach angles** actually matter. 
-- Evaluate **EDI (Evasive Difficulty Index)**: a difficulty-style score that rises when the required avoidance space is large **and** the remaining time is short—i.e., when avoiding a crash becomes genuinely hard. 
-- Support both **offline** traffic safety analysis and **online-style** monitoring / onboard warning prototypes, with efficiency emphasized in the paper. 
+## About the paper
 
-If a “same score” metric can’t tell the difference between an easy brake and an emergency dodge, this repo is here to help you **get RID of that blind spot**. 
+This repository provides the implementation accompanying our paper, published in **Transportation Research Part C: Emerging Technologies (TRC)**:
 
-## A more formal add-on
-Beyond the punchline, **RID** is built for practical traffic safety use: it aims to be more accurate in complex **2D encounters** while still being fast enough for **real-time monitoring** and **onboard warning**. Many classic indicators are proximity-driven and can struggle with geometry-rich interactions, limited scenario generalization, and the **identity paradox**, where similar metric values hide very different avoidability and risk escalation paths. RID addresses these issues with a geometry-grounded conflict representation (**Interaction → Friction → Critical Conflict**) and a severity metric (**EDI**) that cleanly separates **interaction pressure**, **encroachment**, and **imminent collision** states for clearer interpretation. 
+> **Relative interaction Domain (RID): a real-time two--dimensional risk quantification model considering anticipated spatial demand**
 
-RID is also **dynamics-aware**: its avoidance-space demand is conditioned on maneuver capability (e.g., **braking limits**), so the risk signal reflects whether a collision remains physically avoidable under the current motion state—not only whether two vehicles are close. In addition, two intuitive hyperparameters make the framework deployment-friendly and easy to tune: a **buffer width** (safety redundancy / risk tolerance) and a **critical deceleration (capability)** parameter (links the model to vehicle-road-user dynamics). Finally, the paper reports a highly efficient runtime (**0.165 ms per interacting pair** under a 32-thread setting), supporting large-scale pairwise evaluation in real time. 
+The standalone implementation constructs vehicle interaction domains from physical footprints, relative motion, a safety buffer, and braking-based spatial demand. It combines their interaction areas with the anticipated event time, **TANT**, to calculate **RCDI, REDI, and RIDI**.
 
-## Dependencies
+## What the implementation provides
 
-Tested with **Python 3.9+** (3.10/3.11 should also work).
+- **Two-dimensional vehicle geometry.** Oriented rectangular bodies represent vehicle dimensions and headings; relative velocity determines the direction of motion.
+- **Braking-based spatial demand.** A configurable deceleration magnitude determines the braking-distance contribution to the domain's longitudinal extent.
+- **Anticipated events.** Continuous geometry identifies the first predicted physical contact or the earliest attainment of the minimum future body clearance.
+- **Three interaction intensities.** RCDI, REDI, and RIDI describe distinct combinations of physical and buffered interaction areas, normalized by TANT.
+- **A standalone Python interface.** Use a single state pair, a pandas DataFrame, or a CSV file. CSV processing supports multiple worker processes.
 
-Required libraries:
-- **numpy**
-- **pandas** (reads `.csv` and `.h5`; for `.h5` you may need `pytables` / `tables`)
-- **shapely** (geometry / intersection / distance / affine transforms)
-- **matplotlib** (optional, for debug plots)
-
-You can install the core dependencies with:
-
-pip install numpy pandas shapely matplotlib tables
-
-
-
-
-
-## Input data format
-
-RID is computed on **interaction pairs**: each row represents a pair *(i, j)* at a given `frame` / `time`, where agent **i** is treated as the reference (A/ego) and agent **j** as the counterpart (B/target). 
-
-### Supported input files
-- **HDF5**: `pd.read_hdf(path, key="data")` 
-- **CSV**: `pd.read_csv(path)` (if you adapt the loader accordingly)
-- We have provided a test file (RID-0602-128-217-DS2-df_result.csv) that can be used to test RID-main.py
-
-
-### Indexing & metadata
-
-| Column | Meaning (recommended unit) |
-|---|---|
-| `source_file` | Source filename / dataset identifier (optional, for traceability). |
-| `frame_id` | Frame index (discrete timestep). |
-| `time` | Timestamp (seconds, or your dataset’s time unit). |
-| `track_id_i` | Track ID of agent *i* (vehicle A / reference). |
-| `track_id_j` | Track ID of agent *j* (vehicle B / counterpart). |
-| `pair_id` | Pair identifier (optional but recommended for grouping persistent (i, j) pairs). |
-| `intersection_id` | Scenario / intersection ID (mainly used for labeling / plots). |
-
-### Agent i (vehicle A): state & geometry
-
-| Column | Meaning (recommended unit) |
-|---|---|
-| `x_i`, `y_i` | Global position of agent *i* (m). |
-| `vx_i`, `vy_i` | Global velocity components of agent *i* (m/s). |
-| `hx_i`, `hy_i` | Heading unit-vector components (optional; some datasets provide these). |
-| `psi_kf_i` | Heading angle of agent *i* (radians). |
-| `length_i`, `width_i` | Vehicle length / width of agent *i* (m), used to build the vehicle footprint (VAD). |
-| `lon_acc_i`, `lat_acc_i` | Longitudinal / lateral acceleration (m/s²), used for dynamics-related computations (e.g., acceleration projection). |
-| `agent_type_i` | Agent type (optional; e.g., car/truck). |
-
-### Agent j (vehicle B): state & geometry
-
-| Column | Meaning (recommended unit) |
-|---|---|
-| `x_j`, `y_j` | Global position of agent *j* (m). |
-| `vx_j`, `vy_j` | Global velocity components of agent *j* (m/s). |
-| `hx_j`, `hy_j` | Heading unit-vector components (optional). |
-| `psi_kf_j` | Heading angle of agent *j* (radians). |
-| `length_j`, `width_j` | Vehicle length / width of agent *j* (m). |
-| `lon_acc_j`, `lat_acc_j` | Longitudinal / lateral acceleration (m/s²). |
-| `agent_type_j` | Agent type (optional). |
-
-### Relative quantities (optional if precomputed upstream)
-
-The pipeline can also use relative quantities in a **relative coordinate system** centered at agent *i* (A), where axes are defined using the relative-velocity direction.
-
-| Column | Meaning (recommended unit) |
-|---|---|
-| `x_rel`, `y_rel` | Relative position coordinates (m). |
-| `v_rel` | Relative speed magnitude (m/s). |
-| `v_rel_x`, `v_rel_y` | Relative velocity components (m/s). |
-| `v_rel_heading` | Relative velocity heading (radians, optional). |
-| `a_rel` | Relative-acceleration-related term (optional; definition depends on your pipeline). |
-| `a_proj` | Acceleration **projection onto the relative-velocity direction** (used as a dynamics-related input in time-to-criticality computations). |
-
-> Notes  
-> - Recommended: standardize your dataset to the column names above, or add a `rename()` mapping at load time.  
-> - If you do not provide the relative columns, compute them from the global states in preprocessing or inside the code.
-
+The implementation is contained in [`rid_model.py`](rid_model.py), with English documentation and usage examples.
 
 ## Outputs
 
-For each interaction pair and timestamp, the pipeline computes (names as in the draft):
-- **RIDI / REDI / RCDI**: risk/encroachment-style indicators derived from the RID/RCD domains. 
-- **Tant**: anticipated time to the most critical configuration (used as the time resource). 
-- **intrusion degree**: degree of intrusion into the RID-related domain. 
-- **conflict level**: discrete state label (e.g., detachment / interaction escalation levels). 
-- **R_RID_x, R_RID_y** (and RCD counterparts in some functions): RID shape/scale parameters used internally and helpful for debugging. 
+Each input row represents one ordered vehicle pair at one synchronized time. Vehicle **A / i** is the reference agent; vehicle **B / j** is the counterpart.
 
+| Output | Meaning | Unit |
+|---|---|---|
+| `RCDI` | Cropped RCD domain intersected with B's physical projection band, divided by the regularized TANT | m²/s |
+| `REDI` | Cropped RID domain intersected with B's physical projection band, divided by the regularized TANT | m²/s |
+| `RIDI` | Cropped RID domain intersected with B's safety-buffered projection band, divided by the regularized TANT | m²/s |
+| `T_ant` | Anticipated time to the selected collision or qualifying close-pass event | s |
+| `rcd_area_m2`, `red_area_m2`, `rid_area_m2` | The three interaction areas before time normalization | m² |
+| `current_clearance_m` | Current minimum distance between the physical vehicle bodies | m |
+| `minimum_future_clearance_m` | Minimum predicted physical body clearance under the motion model | m |
+| `event_distance_m` | Relative translation required to reach the selected event geometry | m |
+| `event_status` | Event classification, such as `future_collision`, `future_close_pass`, or `no_future_approach` | — |
 
-​
+Additional diagnostics include the domain radii, relative speed, projected relative acceleration, and current-contact flag. Full field definitions are available in `RIDResult` and the module documentation.
+
+The indicators have the geometric ordering **RCDI ≤ REDI ≤ RIDI**, up to numerical roundoff. They are directed quantities: swapping A and B can change the domain geometry and the resulting areas. Their values describe interaction intensity; they are not calibrated collision probabilities.
+
+## Installation and quick start
+
+The module supports **Python 3.8 or later** and requires NumPy and Shapely:
+
+```bash
+python -m pip install numpy shapely
+```
+
+Download `rid_model.py`, or clone this repository:
+
+```bash
+git clone https://github.com/LiQi12/Can-you-get-RID-off-.git
+cd Can-you-get-RID-off-
+python rid_model.py --demo
+```
+
+The demonstration uses a 4 m × 2 m vehicle travelling at 5 m/s toward an equally sized stationary vehicle whose centre is 20 m ahead. The expected output is approximately:
+
+```text
+RCDI: 4.654519
+REDI: 4.677758
+RIDI: 9.309038
+T_ant: 3.2
+```
+
+### Python API
+
+```python
+from rid_model import AgentState, RIDConfig, compute_rid_metrics
+
+ego = AgentState(
+    x=0, y=0, vx=5, vy=0,
+    heading=0, length=4, width=2,
+)
+other = AgentState(
+    x=20, y=0, vx=0, vy=0,
+    heading=0, length=4, width=2,
+)
+
+config = RIDConfig(Ds=1.0, acr=1.67)
+result = compute_rid_metrics(ego, other, config)
+
+print(result.rcdi, result.redi, result.ridi, result.tant_s)
+print(result.to_dict())
+```
+
+Named-field dictionaries are also accepted by `compute_rid_metrics`. The `tant_s` attribute is exported as `T_ant` by `to_dict()` and the CSV interface.
+
+## Default parameters
+
+| Parameter | Default | Role |
+|---|---:|---|
+| `Ds` | **1.0 m** | Outward safety-buffer distance, additional RID half-width, and upper clearance threshold for a non-collision event |
+| `acr` | **1.67 m/s²** | Positive braking-deceleration magnitude used in `v² / (2 × acr)` for both vehicles |
+| `domain_exponent` | 20 | Superellipse shape parameter |
+| `anticipation_dt_s` | 0.2 s | Interval used in the local acceleration correction to relative speed |
+| `superellipse_points` | 100 | Number of vertices used to approximate each superellipse |
+| `time_epsilon_s` | 0.000001 s | Minimum denominator used when normalizing areas by TANT |
+
+**Ds is measured outward from each side of the physical footprint.** A 1 m buffer therefore adds 2 m to the total transverse width. Physical collision detection uses the unbuffered bodies.
+
+For a non-collision path, a future event is eligible only when its minimum body clearance satisfies:
+
+```text
+0 < minimum_future_clearance < Ds
+```
+
+A minimum exactly equal to Ds is excluded. If no qualifying future approach exists, `T_ant` is infinite and all three intensities are zero. A collision path remains eligible independently of this non-collision clearance condition.
+
+The public parameter `acr` corresponds to the effective braking parameter named `a_rid` in the earlier research scripts.
+
+## Paired trajectory data
+
+Each row must contain two vehicle states from the **same recording, location, and timestamp**. The module evaluates existing pairs; trajectory matching and synchronization take place before calculation. Keep recording and intersection identifiers when assembling data from multiple locations.
+
+The following fields are required for **both** suffixes, `_i` and `_j`:
+
+| Fields | Description | Unit |
+|---|---|---|
+| `x`, `y` | Global coordinates of the physical body centre | m |
+| `vx`, `vy` | Global velocity components | m/s |
+| `heading` | Body heading, counterclockwise from global +x | rad |
+| `length`, `width` | Positive physical body dimensions | m |
+
+For example, use `x_i` and `x_j` for the two x coordinates. The original `psi_kf_i` and `psi_kf_j` heading columns are also supported.
+
+Optional acceleration fields are:
+
+| Fields | Convention |
+|---|---|
+| `ax`, `ay` | Global acceleration components; provide both together. These take precedence when supplied. |
+| `lon_acc`, `lat_acc` | Body-frame acceleration, with longitudinal acceleration positive forward and lateral acceleration positive **right**. |
+
+All accelerations use m/s². Missing accelerations default to zero. If a dataset uses left-positive lateral acceleration, convert its sign or provide global `ax` and `ay` directly.
+
+Metadata such as `source_file`, `frame_id`, `time`, `track_id_i`, `track_id_j`, `pair_id`, and `intersection_id` is preserved in the CSV and DataFrame outputs. Precomputed relative-coordinate fields are not required.
+
+### CSV processing
+
+A minimal `pairs.csv` can contain:
+
+```csv
+frame_id,intersection_id,track_id_i,track_id_j,x_i,y_i,vx_i,vy_i,heading_i,length_i,width_i,x_j,y_j,vx_j,vy_j,heading_j,length_j,width_j
+0,example,1,2,0,0,5,0,0,4,2,20,0,0,0,0,4,2
+```
+
+Calculate the metrics using four worker processes:
+
+```bash
+python rid_model.py --input pairs.csv --output metrics.csv --workers 4
+```
+
+Parameters can be set explicitly:
+
+```bash
+python rid_model.py --input pairs.csv --output metrics_custom.csv --ds 1.0 --acr 1.67
+```
+
+Choose a new output filename for each run. The CLI refuses to overwrite an existing file or append duplicate result columns to an input that already contains them.
+
+### DataFrame processing
+
+Install pandas if you want to use the DataFrame interface:
+
+```bash
+python -m pip install pandas
+```
+
+```python
+import pandas as pd
+from rid_model import RIDConfig, compute_rid_dataframe
+
+pairs = pd.read_csv("pairs.csv", float_precision="round_trip")
+metrics = compute_rid_dataframe(pairs, RIDConfig(Ds=1.0, acr=1.67))
+print(metrics[["RCDI", "REDI", "RIDI", "T_ant"]])
+```
+
+The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
+
+## Motion model and interpretation
+
+The geometry assumes **fixed body headings and linear relative translation**. Continuous Minkowski geometry determines first contact or the earliest attainment of minimum future clearance, without a spatial scan step or a fixed 100 m search cutoff.
+
+The anticipated time retains the research model's local speed correction:
+
+```text
+effective_speed = max(abs(relative_speed + a_proj × 0.2), 0.001)
+TANT = event_distance / effective_speed
+```
+
+Here `a_proj` is the relative acceleration projected onto the relative-velocity direction. This correction does not integrate a complete accelerating, braking-to-rest, or turning trajectory. The absolute-value convention is retained even if the corrected speed changes sign.
+
+Additional interpretation notes:
+
+- A separated pair whose minimum clearance already occurs at the current instant has no future approach event, so `T_ant = inf`.
+- Current physical contact gives `T_ant = 0`. Area normalization uses the numerical time floor, so contact intensities can be large and depend on that floor.
+- A pair with effectively zero relative speed has zero intensities. Current contact is still identified by `currently_overlapping` and `event_status`.
+- Superellipse areas are numerical polygon approximations. Event labels describe geometry and motion; they are not calibrated severity classes.
+- This module returns pairwise instantaneous metrics. Vehicle-level aggregation over neighbours, and TE/TI risk-exposure calculations, require a separate analysis step.
+
+The release corrects scan-based collision misses, approximate minimum-clearance searches, inconsistent velocity directions, and finite search truncation found in the earlier implementation. As a result, revised outputs can differ from historical results.
+
+## License
+
+This repository is distributed under the [MIT License](LICENSE).
