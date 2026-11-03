@@ -25,6 +25,7 @@ The standalone implementation constructs vehicle interaction domains from physic
 - **Braking-based spatial demand.** A configurable deceleration magnitude determines the braking-distance contribution to the domain's longitudinal extent.
 - **Anticipated events.** Continuous geometry identifies the first predicted physical contact or the earliest attainment of the minimum future body clearance.
 - **Three interaction intensities.** RCDI, REDI, and RIDI describe distinct combinations of physical and buffered interaction areas, normalized by TANT.
+- **Six event classes.** Interaction, Friction, Critical Conflict, Collision, Safe, and Detachment, with a configurable time threshold.
 - **A standalone Python interface.** Use a single state pair, a pandas DataFrame, or a CSV file. CSV processing supports multiple worker processes.
 
 The implementation is contained in [`rid_model.py`](rid_model.py), with English documentation and usage examples.
@@ -43,11 +44,42 @@ Each input row represents one ordered vehicle pair at one synchronized time. Veh
 | `current_clearance_m` | Current minimum distance between the physical vehicle bodies | m |
 | `minimum_future_clearance_m` | Minimum predicted physical body clearance under the motion model | m |
 | `event_distance_m` | Relative translation required to reach the selected event geometry | m |
-| `event_status` | Event classification, such as `future_collision`, `future_close_pass`, or `no_future_approach` | — |
+| `conflict_level` | One of the six event classes defined below | — |
+| `conflict_time_threshold_s` | Time threshold used for event classification | s |
+| `event_status` | Geometric diagnostic, such as `future_collision`, `future_close_pass`, or `no_future_approach` | — |
+| `radius_y_m` | Shared longitudinal semi-axis of RCD and RID | m |
 
 Additional diagnostics include the domain radii, relative speed, projected relative acceleration, and current-contact flag. Full field definitions are available in `RIDResult` and the module documentation.
 
 The indicators have the geometric ordering **RCDI ≤ REDI ≤ RIDI**, up to numerical roundoff. They are directed quantities: swapping A and B can change the domain geometry and the resulting areas. Their values describe interaction intensity; they are not calibrated collision probabilities.
+
+## Interaction domains and event classes
+
+**RCD and RID have the same longitudinal extent in the relative coordinate system.** Their longitudinal semi-axis is shared:
+
+```text
+R_RCD,y = R_RID,y = R_y
+```
+
+The domains differ in transverse width: RCD uses the projected physical half-width of vehicle A, while RID adds `Ds` to each side. Both use the same longitudinal crop when calculating the interaction areas. The three indices are the **Relative Interaction Domain Index (RIDI)**, **Relative Encroachment Domain Index (REDI)**, and **Relative Conflict Domain Index (RCDI)**.
+
+For Interaction, Friction, and Critical Conflict, classification follows **(C1 OR C2) AND C3**. C1 means `T_ant < conflict_time_threshold_s`; C2 describes a current domain intersection; C3 requires the corresponding indices to be positive.
+
+| `conflict_level` | Current intersection condition (C2) | Required positive indices (C3) |
+|---|---|---|
+| `Interaction` | B's safety-buffered body intersects A's RID | RIDI |
+| `Friction` | B's physical body intersects A's RID | RIDI and REDI |
+| `Critical Conflict` | B's physical body intersects A's RCD | RIDI, REDI, and RCDI |
+
+These intersection conditions use the full domains; area normalization uses their cropped portions. An index must remain positive even when C2 is satisfied. When several classes qualify, **Critical Conflict takes priority over Friction, then Interaction**.
+
+The remaining classes are:
+
+- **Collision:** the physical bodies currently touch or overlap; this takes priority over every other class.
+- **Detachment:** a separated pair with nonzero relative speed has already attained its minimum future clearance at the current instant, so no later approach event is selected. This includes separating motion and an already attained flat minimum.
+- **Safe:** none of the above conditions applies. A separated pair with effectively zero relative speed also receives this class.
+
+The default time threshold is **3 s**. The timing condition is strict: equality alone does not trigger a conflict class, although a qualifying current intersection can still do so. A predicted future collision does not by itself receive the `Collision` class; that label describes current physical contact. For a separated pair with no qualifying future event, `T_ant = inf` and the three indices are zero.
 
 ## Installation and quick start
 
@@ -72,6 +104,7 @@ RCDI: 4.654519
 REDI: 4.677758
 RIDI: 9.309038
 T_ant: 3.2
+conflict_level: Safe
 ```
 
 ### Python API
@@ -88,10 +121,10 @@ other = AgentState(
     heading=0, length=4, width=2,
 )
 
-config = RIDConfig(Ds=1.0, acr=1.67)
+config = RIDConfig(Ds=1.0, acr=1.67, conflict_time_threshold_s=3.0)
 result = compute_rid_metrics(ego, other, config)
 
-print(result.rcdi, result.redi, result.ridi, result.tant_s)
+print(result.rcdi, result.redi, result.ridi, result.tant_s, result.conflict_level)
 print(result.to_dict())
 ```
 
@@ -103,6 +136,7 @@ Named-field dictionaries are also accepted by `compute_rid_metrics`. The `tant_s
 |---|---:|---|
 | `Ds` | **1.0 m** | Outward safety-buffer distance, additional RID half-width, and upper clearance threshold for a non-collision event |
 | `acr` | **1.67 m/s²** | Positive braking-deceleration magnitude used in `v² / (2 × acr)` for both vehicles |
+| `conflict_time_threshold_s` | **3.0 s** | Strict time threshold for conflict classification; does not change the indicator values |
 | `domain_exponent` | 20 | Superellipse shape parameter |
 | `anticipation_dt_s` | 0.2 s | Interval used in the local acceleration correction to relative speed |
 | `superellipse_points` | 100 | Number of vertices used to approximate each superellipse |
@@ -118,7 +152,7 @@ For a non-collision path, a future event is eligible only when its minimum body 
 
 A minimum exactly equal to Ds is excluded. If no qualifying future approach exists, `T_ant` is infinite and all three intensities are zero. A collision path remains eligible independently of this non-collision clearance condition.
 
-The public parameter `acr` corresponds to the effective braking parameter named `a_rid` in the earlier research scripts.
+The public parameter `acr` corresponds to the effective braking parameter named `a_rid` in the earlier research scripts. **Users may calibrate `acr` from their own trajectory data for different interaction angles and speed conditions.**
 
 ## Paired trajectory data
 
@@ -164,7 +198,7 @@ python rid_model.py --input pairs.csv --output metrics.csv --workers 4
 Parameters can be set explicitly:
 
 ```bash
-python rid_model.py --input pairs.csv --output metrics_custom.csv --ds 1.0 --acr 1.67
+python rid_model.py --input pairs.csv --output metrics_custom.csv --ds 1.0 --acr 1.67 --conflict-time-threshold 3.0
 ```
 
 Choose a new output filename for each run. The CLI refuses to overwrite an existing file or append duplicate result columns to an input that already contains them.
@@ -183,7 +217,7 @@ from rid_model import RIDConfig, compute_rid_dataframe
 
 pairs = pd.read_csv("pairs.csv", float_precision="round_trip")
 metrics = compute_rid_dataframe(pairs, RIDConfig(Ds=1.0, acr=1.67))
-print(metrics[["RCDI", "REDI", "RIDI", "T_ant"]])
+print(metrics[["RCDI", "REDI", "RIDI", "T_ant", "conflict_level"]])
 ```
 
 The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
