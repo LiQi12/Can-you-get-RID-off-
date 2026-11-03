@@ -188,28 +188,7 @@ print(metrics[["RCDI", "REDI", "RIDI", "T_ant"]])
 
 The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
 
-## Motion model and interpretation
 
-The geometry assumes **fixed body headings and linear relative translation**. Continuous Minkowski geometry determines first contact or the earliest attainment of minimum future clearance, without a spatial scan step or a fixed 100 m search cutoff.
-
-The anticipated time retains the research model's local speed correction:
-
-```text
-effective_speed = max(abs(relative_speed + a_proj × 0.2), 0.001)
-TANT = event_distance / effective_speed
-```
-
-Here `a_proj` is the relative acceleration projected onto the relative-velocity direction. This correction does not integrate a complete accelerating, braking-to-rest, or turning trajectory. The absolute-value convention is retained even if the corrected speed changes sign.
-
-Additional interpretation notes:
-
-- A separated pair whose minimum clearance already occurs at the current instant has no future approach event, so `T_ant = inf`.
-- Current physical contact gives `T_ant = 0`. Area normalization uses the numerical time floor, so contact intensities can be large and depend on that floor.
-- A pair with effectively zero relative speed has zero intensities. Current contact is still identified by `currently_overlapping` and `event_status`.
-- Superellipse areas are numerical polygon approximations. Event labels describe geometry and motion; they are not calibrated severity classes.
-- This module returns pairwise instantaneous metrics. Vehicle-level aggregation over neighbours, and TE/TI risk-exposure calculations, require a separate analysis step.
-
-The release corrects scan-based collision misses, approximate minimum-clearance searches, inconsistent velocity directions, and finite search truncation found in the earlier implementation. As a result, revised outputs can differ from historical results.
 
 ## License
 
