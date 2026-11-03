@@ -114,9 +114,5 @@ For each interaction pair and timestamp, the pipeline computes (names as in the 
 - **conflict level**: discrete state label (e.g., detachment / interaction escalation levels). 
 - **R_RID_x, R_RID_y** (and RCD counterparts in some functions): RID shape/scale parameters used internally and helpful for debugging. 
 
-### Saved files
-- A result table (you can export the returned dataframe to `.csv`/`.h5`).
-- Optional debug figures: the draft includes plotting utilities (relative-scene plots, velocity diagrams) and saves `.jpg` outputs under an `OutputData...` folder when enabled. 
 
-## The paper related to this model is currently under review; once it is accepted, we will update the code and the cover accordingly.
 ​
