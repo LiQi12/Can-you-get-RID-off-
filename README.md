@@ -152,7 +152,7 @@ For a non-collision path, a future event is eligible only when its minimum body 
 
 A minimum exactly equal to Ds is excluded. If no qualifying future approach exists, `T_ant` is infinite and all three intensities are zero. A collision path remains eligible independently of this non-collision clearance condition.
 
-The public parameter `acr` corresponds to the effective braking parameter named `a_rid` in the earlier research scripts. **Users may calibrate `acr` from their own trajectory data for different interaction angles and speed conditions.**
+**Users may calibrate `acr` from their own trajectory data for different interaction angles and speed conditions.**
 
 ## Paired trajectory data
 
@@ -221,7 +221,6 @@ print(metrics[["RCDI", "REDI", "RIDI", "T_ant", "conflict_level"]])
 ```
 
 The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
-
 
 
 ## License
