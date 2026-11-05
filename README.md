@@ -130,11 +130,11 @@ print(result.to_dict())
 
 Named-field dictionaries are also accepted by `compute_rid_metrics`. The `tant_s` attribute is exported as `T_ant` by `to_dict()` and the CSV interface.
 
-## Default parameters
+## Parameters and safety-boundary selection
 
-| Parameter | Default | Role |
+| Parameter | Default / suggested setting | Role |
 |---|---:|---|
-| `Ds` | **1.0 m** | Outward safety-buffer distance, additional RID half-width, and upper clearance threshold for a non-collision event |
+| `Ds` | **1.0 m**: motor-vehicle calibration and code default; **2.0 m**: conservative setting for complex traffic | Outward safety-buffer distance, additional RID half-width, and upper clearance threshold for a non-collision event |
 | `acr` | **1.67 m/s²** | Positive braking-deceleration magnitude used in `v² / (2 × acr)` for both vehicles |
 | `conflict_time_threshold_s` | **3.0 s** | Strict time threshold for conflict classification; does not change the indicator values |
 | `domain_exponent` | 20 | Superellipse shape parameter |
@@ -142,7 +142,17 @@ Named-field dictionaries are also accepted by `compute_rid_metrics`. The `tant_s
 | `superellipse_points` | 100 | Number of vertices used to approximate each superellipse |
 | `time_epsilon_s` | 0.000001 s | Minimum denominator used when normalizing areas by TANT |
 
-**Ds is measured outward from each side of the physical footprint.** A 1 m buffer therefore adds 2 m to the total transverse width. Physical collision detection uses the unbuffered bodies.
+**Choosing `Ds`.** Calibration using motor-vehicle data yielded **1 m**. This value can be suitable for low-speed interactions, but may provide too little safety margin at higher speeds. For complex traffic conditions, **2 m is recommended as a conservative safety boundary** for proactive safety assessment or the assessment of spatiotemporal interaction intensity.
+
+**Effect on the indices.** Changing `Ds` leaves the physical RCD geometry and **RCDI unchanged**, while it affects **REDI and RIDI** through the width of RID and the safety-buffered interaction band. A larger `Ds` also admits more non-collision close-pass events under the clearance condition below, allowing a more conservative assessment of surrounding interactions.
+
+The code defaults to `Ds=1.0`. Select the conservative setting explicitly:
+
+```python
+config = RIDConfig(Ds=2.0, acr=1.67, conflict_time_threshold_s=3.0)
+```
+
+**Ds is measured outward from each side of the physical footprint.** A 2 m buffer therefore adds 4 m to the total transverse width; a 1 m buffer adds 2 m. Physical collision detection uses the unbuffered bodies.
 
 For a non-collision path, a future event is eligible only when its minimum body clearance satisfies:
 
@@ -221,7 +231,6 @@ print(metrics[["RCDI", "REDI", "RIDI", "T_ant", "conflict_level"]])
 ```
 
 The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
-
 
 ## License
 
