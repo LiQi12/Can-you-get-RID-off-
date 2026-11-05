@@ -3,11 +3,11 @@
 
 # Can You Get RID of Risk?
 
-Think you can **get RID of risk** in traffic? A gentle tap on the brake, a little extra room, and you are out of trouble. Smooth braking, no drama. Then traffic changes the script.
+Can you really **get RID of risk** in traffic? Sometimes, a gentle touch of the brakes is all it takes. Other times, you brake hard and wish you had a little more road to work with.
 
-Many classic safety metrics keep an eye on **“how close”** or **“how soon.”** Yet two encounters can earn the same score while demanding very different responses: one is a calm, controlled slowdown; the other is a last-second, white-knuckle scramble for space. That is the **identity paradox** in everyday terms: **the metric stays chill while the driving task turns nasty.** Same score. Very different story behind the wheel.
+Many familiar safety metrics tell us **how close** vehicles are or **how soon** they might collide. Yet the same score can describe an easy slowdown or a difficult evasive maneuver. This is the **identity paradox**: **the numbers look the same, but life behind the wheel feels very different.**
 
-**RID (Relative Interaction Domain)** brings the driving task into the picture: the **space an evasive manoeuvre needs** and the **time the encounter leaves**. By combining vehicle geometry, relative motion, and braking-based spatial demand, it gives those deceptively similar encounters a more revealing description.
+**RID (Relative Interaction Domain)** focuses on **the space needed to avoid a collision and the time available to act**. It combines vehicle geometry, relative motion, and braking demand to capture differences that distance or timing alone can miss.
 
 So, can you **get RID of trouble before trouble gets you?** That is the question behind this project.
 
