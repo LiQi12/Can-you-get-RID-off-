@@ -232,6 +232,13 @@ print(metrics[["RCDI", "REDI", "RIDI", "T_ant", "conflict_level"]])
 
 The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
 
+## Model assumptions
+
+The model assumes fixed body headings and linear relative translation. TANT uses the research model's local acceleration correction to relative speed; it does not predict a complete turning or braking-to-rest trajectory.
+
+The outputs describe instantaneous, directed interactions between two vehicles. Vehicle-level aggregation over neighbours and TE/TI risk-exposure calculations require a separate analysis step. Numerical conventions, including time regularization at current contact, are documented in `rid_model.py`.
+
+
 ## License
 
 This repository is distributed under the [MIT License](LICENSE).
