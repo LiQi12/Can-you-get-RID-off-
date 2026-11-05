@@ -232,12 +232,43 @@ print(metrics[["RCDI", "REDI", "RIDI", "T_ant", "conflict_level"]])
 
 The output retains the input index and identity columns. For an individual paired row, use `compute_rid_from_row(row, config)`.
 
-## Model assumptions
+## Model assumptions and future improvements
 
-The model assumes fixed body headings and linear relative translation. TANT uses the research model's local acceleration correction to relative speed; it does not predict a complete turning or braking-to-rest trajectory.
+The current model assumes fixed body headings and linear relative translation. TANT applies a local acceleration correction to relative speed; it does not predict a complete turning or braking-to-rest trajectory. These assumptions limit its representation of interactions along curved roads and during turning manoeuvres.
 
 The outputs describe instantaneous, directed interactions between two vehicles. Vehicle-level aggregation over neighbours and TE/TI risk-exposure calculations require a separate analysis step. Numerical conventions, including time regularization at current contact, are documented in `rid_model.py`.
 
+We plan to incorporate **map-based prediction of feasible paths**, particularly on curves and during turning manoeuvres, to refine the identification of approaching interactions and the associated **spatial demand for braking**. This development aims to improve the accuracy of risk identification and provide a stronger modelling foundation for risk assessment and injury prevention in automated driving.
+
+## Displaying RIDI on a logarithmic scale
+
+RIDI can become very large when the anticipated event time is close to zero. For visualization, use **`log10(1 + RIDI)`** to compress its dynamic range and make lower and moderate values easier to distinguish alongside large values.
+
+![Comparison of raw RIDI and log10(1 + RIDI) for the same observations](ridi_log_scale_comparison.png)
+
+**Original and transformed RIDI.** Both panels show the same 2,200 paired vehicle states (`Ds = 1 m`), including 1,899 zeros. The maximum changes from 6,346,494.89 to 6.8025 on the displayed coordinate, while the ordering is preserved. Orange triangles mark current body contact according to the model; large contact values depend on the numerical time floor. `M` denotes one million; the horizontal axis is observation order, not time.
+
+Use RIDI values expressed consistently in **m²/s**. Formally, the dimensionless plotting coordinate is `log10(1 + RIDI / R_ref)`, with `R_ref = 1 m²/s`; this gives the same numerical result as the shorthand above for the module's outputs.
+
+```python
+import numpy as np
+
+metrics["RIDI_log10"] = np.log10(1.0 + metrics["RIDI"])
+```
+
+Plot `RIDI_log10` on a linear axis labelled `log10(1 + RIDI)`. The values have already been transformed, so an additional logarithmic axis is unnecessary.
+
+| Raw RIDI (m²/s) | `log10(1 + RIDI)` |
+|---:|---:|
+| 0 | 0 |
+| 9 | 1 |
+| 99 | 2 |
+| 999 | 3 |
+| 9,999 | 4 |
+
+Adding 1 keeps zero values defined and maps them to zero. The transformation is strictly increasing, so it preserves the ordering of RIDI values. Each increase of one in the plotted coordinate represents a tenfold increase in `1 + RIDI`, rather than an equal increase in raw RIDI.
+
+This is a display transformation: it compresses large finite values without clipping them, and it does not impose an upper bound or turn infinity into a finite value. Retain raw RIDI for physical interpretation and exposure calculations; integrating the transformed values would define a different quantity. A raw threshold `c` corresponds to `log10(1 + c)` on the transformed coordinate when the same units are used.
 
 ## License
 
