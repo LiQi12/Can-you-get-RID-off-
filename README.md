@@ -24,7 +24,7 @@ RID combines vehicle geometry, relative motion, and braking-based spatial demand
 - **Vehicle interaction domains** built from oriented vehicle footprints, relative velocity, and braking demand.
 - **Anticipated event time (TANT)** for physical contact or a close pass within the selected safety boundary.
 - **Three interaction indices and six event classes:** Interaction, Friction, Critical Conflict, Collision, Safe, and Detachment.
-- **A single Python module**, [`rid_model.py`](rid_model.py), supporting state pairs, pandas DataFrames, and CSV files with parallel processing.
+- **A single Python module**, [`rid_model.py`](rid_model.py), supporting state pairs, pandas DataFrames, and CSV files with parallel processing. The code will be updated and uploaded after the article is published in February 2027.
 
 ## Outputs
 
